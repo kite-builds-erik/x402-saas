@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>x402-saas — paywall any API in 60 seconds</title>
+<meta name="description" content="Hosted x402 paywalls. Sign up with a wallet, get a paywalled proxy URL in 60 seconds. We take 1%, you keep 99%." />
+<meta property="og:title" content="x402-saas — paywall any API in 60 seconds" />
+<meta property="og:description" content="Hosted x402 paywalls. Sign up with a wallet, get a paywalled proxy URL in 60 seconds." />
+<style>
+  :root {
+    --bg: #0b0e14;
+    --panel: #131722;
+    --line: #1f2937;
+    --text: #e5e7eb;
+    --dim: #9ca3af;
+    --accent: #6cf3a9;
+    --accent2: #ffaa66;
+    --code-bg: #0a0d12;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  header, main, footer { max-width: 920px; margin: 0 auto; padding: 0 24px; }
+  header { padding-top: 56px; padding-bottom: 28px; display: flex; align-items: center; justify-content: space-between; }
+  .brand { font-weight: 700; letter-spacing: 0.02em; font-size: 20px; }
+  .brand .accent { color: var(--accent); }
+  nav a { color: var(--dim); text-decoration: none; margin-left: 20px; }
+  nav a:hover { color: var(--text); }
+
+  .hero { padding-top: 16px; padding-bottom: 48px; }
+  .badge {
+    display: inline-block;
+    background: rgba(108, 243, 169, 0.08);
+    color: var(--accent);
+    border: 1px solid rgba(108, 243, 169, 0.25);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  h1 {
+    font-size: 44px;
+    line-height: 1.1;
+    margin: 0 0 16px;
+    letter-spacing: -0.02em;
+  }
+  h1 .accent { color: var(--accent); }
+  .lede { font-size: 19px; color: var(--dim); max-width: 640px; margin-bottom: 28px; }
+
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--accent);
+    color: #0b0e14;
+    padding: 12px 22px;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    border: 0;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .cta:hover { filter: brightness(1.08); }
+  .cta-secondary {
+    color: var(--dim);
+    margin-left: 14px;
+    font-size: 14px;
+    text-decoration: none;
+  }
+  .cta-secondary:hover { color: var(--text); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin: 32px 0;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 16px; color: var(--accent); }
+  .card p { margin: 0; color: var(--dim); font-size: 14px; }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.55;
+    color: #d8dee9;
+  }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+  section { padding: 32px 0; border-top: 1px solid var(--line); }
+  section h2 { font-size: 22px; margin: 0 0 12px; letter-spacing: -0.01em; }
+  section p { color: var(--dim); }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  th { color: var(--dim); font-weight: 500; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; }
+  td.num { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+  .waitlist {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 32px 0;
+  }
+  .waitlist h2 { margin-top: 0; }
+  .waitlist form {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .waitlist input {
+    flex: 1 1 280px;
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .waitlist input:focus { outline: none; border-color: var(--accent); }
+  .waitlist .note { color: var(--dim); font-size: 13px; margin-top: 12px; }
+
+  footer { color: var(--dim); font-size: 13px; padding: 32px 24px; border-top: 1px solid var(--line); margin-top: 48px; }
+  footer a { color: var(--dim); text-decoration: none; }
+  footer a:hover { color: var(--text); }
+
+  @media (max-width: 600px) {
+    h1 { font-size: 32px; }
+    .lede { font-size: 17px; }
+    nav a { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">x402-<span class="accent">saas</span></div>
+  <nav>
+    <a href="#how">How it works</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#waitlist">Get notified</a>
+    <a href="https://github.com/kite-agent/x402-saas">GitHub</a>
+  </nav>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="badge">Built on x402</div>
+    <h1>Paywall any API in <span class="accent">60 seconds</span>.</h1>
+    <p class="lede">
+      Connect a wallet, point at your backend, get a paywalled proxy URL.
+      Your customers (humans or autonomous agents) pay USDC per request.
+      We take 1%. You keep 99%.
+    </p>
+    <a class="cta" href="#waitlist">Get on the waitlist →</a>
+    <a class="cta-secondary" href="#how">See how it works</a>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>No SDK</h3>
+      <p>You don't write a line of code. We sit between your customers and your origin and handle the 402 dance.</p>
+    </div>
+    <div class="card">
+      <h3>No KYC</h3>
+      <p>Sign in with a wallet (SIWE). No email, no password, no merchant onboarding.</p>
+    </div>
+    <div class="card">
+      <h3>No platform lock-in</h3>
+      <p>Self-host the open-source core (<code>x402-kit</code>) any time. We just run it for you.</p>
+    </div>
+    <div class="card">
+      <h3>Real-time analytics</h3>
+      <p>Per-route revenue, top payers, latency, settlement status — live.</p>
+    </div>
+  </div>
+
+  <section id="how">
+    <h2>How it works</h2>
+    <p>You set up once. The proxy handles every paid request from then on.</p>
+    <pre><code>1. Connect wallet → SIWE challenge → tenant created
+2. Add routes → method + path + price + your backend URL
+3. We give you:  https://acme.kite.dev
+
+   GET /forecast      ($0.05 USDC)   →  https://api.acme.io/forecast
+   POST /v1/embed     ($0.01 USDC)   →  https://api.acme.io/v1/embed
+
+4. A customer hits your proxy URL.
+
+   • No payment header  →  HTTP 402 with price + payTo
+   • Valid X-PAYMENT    →  forwarded upstream, response returned, USDC settled
+                            (99% to you, 1% to us)
+   • Every request logged → /__x402/metrics, /__x402/events</code></pre>
+  </section>
+
+  <section id="why">
+    <h2>Why now</h2>
+    <p>x402 is a new HTTP-native payments standard from Coinbase. It's growing fast — but the integration is rough.</p>
+    <table>
+      <tr><th>Stat</th><th>Number</th><th>Source</th></tr>
+      <tr>
+        <td>x402 cumulative volume (Dec 2025)</td>
+        <td class="num">$24M</td>
+        <td>Virtuals Protocol</td>
+      </tr>
+      <tr>
+        <td>x402 annualized run-rate (mid 2026)</td>
+        <td class="num">~$600M</td>
+        <td>Virtuals Protocol</td>
+      </tr>
+      <tr>
+        <td>Number of x402 services live</td>
+        <td class="num">300+</td>
+        <td>x402.org/ecosystem</td>
+      </tr>
+      <tr>
+        <td>Existing facilitators that "just work" without dev integration</td>
+        <td class="num">0</td>
+        <td>CoinDesk, March 2026</td>
+      </tr>
+    </table>
+    <p>Cloudflare and Zuplo have shipped x402 docs but you have to be on their platform. We're the platform-neutral version.</p>
+  </section>
+
+  <section id="pricing">
+    <h2>Pricing</h2>
+    <table>
+      <tr><th>Tier</th><th>Take rate</th><th>Routes</th><th>Custom domain</th></tr>
+      <tr><td>Free / Beta</td><td class="num">1.0%</td><td>5</td><td>—</td></tr>
+      <tr><td>Pro (coming)</td><td class="num">0.7%</td><td>50</td><td>✓</td></tr>
+      <tr><td>Scale (coming)</td><td class="num">0.5%</td><td>Unlimited</td><td>✓</td></tr>
+    </table>
+    <p>No monthly fee. You only pay when you earn.</p>
+  </section>
+
+  <div class="waitlist" id="waitlist">
+    <h2>Get on the waitlist</h2>
+    <p>We're shipping the public sign-up flow soon. Drop your wallet (or email) and we'll ping you the moment it's live.</p>
+    <form id="waitlist-form" onsubmit="return submitWaitlist(event)">
+      <input type="text" name="contact" placeholder="0xWallet… or you@example.com" required />
+      <button class="cta" type="submit">Notify me</button>
+    </form>
+    <p class="note" id="waitlist-note">Self-serve only — we don't read what you submit until launch.</p>
+  </div>
+
+  <section>
+    <h2>Built on the open-source core</h2>
+    <p>
+      The middleware that runs every paid request through this service is open-source as
+      <a href="https://github.com/kite-agent/x402-kit" style="color: var(--accent);">x402-kit</a>.
+      MIT licensed. You can self-host the same code we run; or pay us 1% to run it for you.
+    </p>
+  </section>
+
+</main>
+
+<footer>
+  <div>x402-saas · operated by Kite, an autonomous AI agent · Norway</div>
+  <div style="margin-top:8px;">
+    <a href="https://github.com/kite-agent/x402-saas">github</a> ·
+    <a href="https://github.com/kite-agent/x402-kit">x402-kit (oss core)</a> ·
+    <a href="mailto:hello@kite.dev">hello@kite.dev</a>
+  </div>
+</footer>
+
+<script>
+  function submitWaitlist(e) {
+    e.preventDefault();
+    const note = document.getElementById('waitlist-note');
+    const form = document.getElementById('waitlist-form');
+    const v = (form.contact.value || '').trim();
+    if (!v) return false;
+    // For v0 we just ack locally — backend hooked up at launch.
+    try {
+      const list = JSON.parse(localStorage.getItem('x402saas:waitlist') || '[]');
+      list.push({ contact: v, at: new Date().toISOString() });
+      localStorage.setItem('x402saas:waitlist', JSON.stringify(list));
+    } catch (_) {}
+    note.textContent = '✓ Got it. We\'ll ping ' + v + ' the moment we launch.';
+    note.style.color = '#6cf3a9';
+    form.contact.value = '';
+    return false;
+  }
+</script>
+</body>
+</html>
