@@ -10,8 +10,9 @@
 - Landing: https://x402-saas.surge.sh
 - Backend (Render): https://x402-saas.onrender.com
   - Probe: `/__x402/health` → 200 JSON
-  - SIWE: `POST /api/v1/auth/challenge` → returns nonce-signed message
-- Local source: `kite-ops/x402-saas/` (git repo, 35/35 tests, MIT licensed)
+  - SIWE: `POST /api/v1/auth/challenge` → returns nonce-signed message with `domain: "x402-saas.onrender.com"`
+  - End-to-end smoke test: 6/6 passing as of 2026-05-03
+- Source: https://github.com/kite-builds-erik/x402-saas (38/38 tests, MIT licensed)
 
 **Receiving wallet (Base):** `0xC504Fd656330A823C3ffcBAB048c05cF45F60Bdf`
 
@@ -23,9 +24,9 @@
 - **Submit**: https://docs.google.com/forms/d/e/1FAIpQLSfXuEzmiAzRhie_z9raFCF1BXweXgVt18o-DvBuRRgyTygL2A/viewform
 - **Status**: Form filled but blocked at submit by reCAPTCHA "select all images" challenge. Operator action needed: 30 seconds to solve captcha and click Submit. All fields pre-filled.
 
-### 2. Builder Rewards (weekly 2 ETH via Talent Protocol / builderscore.xyz)
+### 2. Builder Rewards (weekly pool via Talent Protocol / builderscore.xyz)
 - **Submit**: https://www.builderscore.xyz/
-- **Status**: Not yet attempted. May require linking to a Base mainnet contract or an active Builder Score profile.
+- **Status**: Researched 2026-05-03 — **blocked by Human Checkmark requirement**. The program requires a binary verification flag from Coinbase/Binance/Galxe/human.tech/World ID, which the autonomous-agent operator profile cannot satisfy without leaking the human owner's identity. Re-evaluate if Talent Protocol adds an "agent" verification path in V3.
 
 ### 3. OP RetroPGF via Atlas (long-term public goods)
 - **Submit**: https://atlas.optimism.io/

@@ -2,8 +2,11 @@
 
 > Hosted x402 paywalls. Sign up with a wallet, get a paywalled proxy URL in 60 seconds. We take 1% of routed USDC volume. You keep 99%, we handle the 402 dance.
 
-[![tests](https://img.shields.io/badge/tests-24%2F24_passing-brightgreen)]()
+[![tests](https://img.shields.io/badge/tests-38%2F38_passing-brightgreen)]()
 [![license](https://img.shields.io/badge/license-MIT-blue)]()
+[![demo](https://img.shields.io/badge/demo-live-blue)](https://x402-saas.surge.sh)
+
+**Live**: backend at [`x402-saas.onrender.com`](https://x402-saas.onrender.com/__x402/health) · landing at [`x402-saas.surge.sh`](https://x402-saas.surge.sh)
 
 This is the multi-tenant managed companion to [`x402-kit`](../x402-kit). The kit is the open-source toolkit you self-host. **`x402-saas` is the hosted version we run for you** — when you don't want to manage infra, configure DNS, or write 402 middleware, you point your backend at our proxy and we take care of the rest.
 
@@ -55,22 +58,22 @@ Send that URL to your customers. We do the rest.
 | `src/control-plane.ts` | REST API: `POST /auth/challenge`, `POST /tenants`, etc. |
 | `src/data-plane.ts` | The proxy: slug-based routing, 402 negotiation, upstream forwarding, event logging |
 | `src/server.ts` | Entrypoint: mounts control + data plane |
-| `test/*.test.ts` | 24 tests covering all of the above |
+| `test/*.test.ts` | 38 tests covering all of the above |
 
 ## Running locally
 
 ```bash
 npm install
 npm run build
-npm test               # 24 tests, ~1s
+npm test               # 38 tests, ~1s
 npm run dev            # boots on :4000
 ```
 
-Smoke test (in another terminal):
+Smoke test against the live backend:
 
 ```bash
-curl http://localhost:4000/                                                # service info
-curl -X POST http://localhost:4000/api/v1/auth/challenge \                 # SIWE challenge
+curl https://x402-saas.onrender.com/__x402/health
+curl -X POST https://x402-saas.onrender.com/api/v1/auth/challenge \
   -H 'content-type: application/json' \
   -d '{"walletAddress":"0xC504Fd656330A823C3ffcBAB048c05cF45F60Bdf"}'
 ```
@@ -94,7 +97,7 @@ The data plane currently uses a stub facilitator that accepts any `X-PAYMENT: st
 
 ## Multi-tenancy & host parsing
 
-The data plane reads `Host: <slug>.<domain>` to identify the tenant. In production, `*.kite.dev` is wildcard-routed at the edge. In tests / dev, `enforceHostMatch=false` enables an `X-Slug-Override` header so we can run all 24 tests without DNS surgery.
+The data plane reads `Host: <slug>.<domain>` to identify the tenant. In production, `*.kite.dev` is wildcard-routed at the edge. In tests / dev, `enforceHostMatch=false` enables an `X-Slug-Override` header so we can run all 38 tests without DNS surgery.
 
 ## License
 
