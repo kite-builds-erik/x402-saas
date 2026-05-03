@@ -20,74 +20,24 @@ problems, which vision models nail.
 from __future__ import annotations
 
 import argparse
-import base64
-import io
 import json
 import os
 import re
 import sys
 import time
 from pathlib import Path
-from typing import Optional, List, Dict
-from urllib.request import urlopen
+from typing import List, Optional
 
-import websocket
 from google import genai
 from google.genai import types
+
+# Shared CDP / image / JSON helpers.
+from _cdp_lib import CDPClient, crop_png, list_pages, strip_json_fences
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     sys.exit("error: set GEMINI_API_KEY in your environment")
 DEFAULT_MODEL = "gemini-3.1-pro-preview"
-CDP_HTTP = os.environ.get("CDP_HTTP", "http://127.0.0.1:18800")
-
-
-class CDPClient:
-    def __init__(self, ws_url: str):
-        self.ws = websocket.create_connection(ws_url, timeout=30, origin="")
-        self._mid = 1
-
-    def call(self, method: str, params: Optional[dict] = None, timeout: float = 30.0) -> dict:
-        msg_id = self._mid
-        self._mid += 1
-        self.ws.send(json.dumps({"id": msg_id, "method": method, "params": params or {}}))
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            try:
-                self.ws.settimeout(max(0.1, deadline - time.time()))
-                msg = json.loads(self.ws.recv())
-            except websocket.WebSocketTimeoutException:
-                continue
-            if msg.get("id") == msg_id:
-                if "error" in msg:
-                    raise RuntimeError(f"CDP error on {method}: {msg['error']}")
-                return msg.get("result", {})
-        raise TimeoutError(f"CDP timeout waiting for {method}")
-
-    def close(self):
-        try:
-            self.ws.close()
-        except Exception:
-            pass
-
-
-def list_pages() -> list[dict]:
-    return [t for t in json.loads(urlopen(f"{CDP_HTTP}/json", timeout=5).read()) if t.get("type") == "page"]
-
-
-def crop_png(png: bytes, x: int, y: int, w: int, h: int) -> bytes:
-    """Crop a region of a PNG using Pillow (already in deps as part of the
-    install chain) — falls back to skimage/numpy if Pillow missing."""
-    try:
-        from PIL import Image
-    except Exception:
-        raise RuntimeError("Pillow required for cropping; pip install Pillow")
-    im = Image.open(io.BytesIO(png))
-    box = (max(0, x), max(0, y), min(im.width, x + w), min(im.height, y + h))
-    cropped = im.crop(box)
-    out = io.BytesIO()
-    cropped.save(out, format="PNG")
-    return out.getvalue()
 
 
 # ── Step A: read the captcha prompt + grid layout ───────────────────────
@@ -279,27 +229,6 @@ def find_verify_button_rect(cdp: CDPClient) -> Optional[dict]:
     return res.get("result", {}).get("value")
 
 
-def cdp_screenshot(cdp: CDPClient, clip: Optional[dict] = None) -> bytes:
-    params: dict = {"format": "png", "captureBeyondViewport": False}
-    if clip:
-        params["clip"] = {**clip, "scale": clip.get("scale", 1)}
-    return base64.b64decode(cdp.call("Page.captureScreenshot", params)["data"])
-
-
-def cdp_click(cdp: CDPClient, x: int, y: int) -> None:
-    cdp.call("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": x, "y": y})
-    time.sleep(0.05)
-    cdp.call(
-        "Input.dispatchMouseEvent",
-        {"type": "mousePressed", "x": x, "y": y, "button": "left", "clickCount": 1},
-    )
-    time.sleep(0.04)
-    cdp.call(
-        "Input.dispatchMouseEvent",
-        {"type": "mouseReleased", "x": x, "y": y, "button": "left", "clickCount": 1},
-    )
-
-
 def detect_grid(cap_w: int, cap_h: int) -> tuple[int, int, dict]:
     """
     Return (cols, rows, grid_rect) where grid_rect = {x_off, y_off, w, h}
@@ -366,7 +295,7 @@ def main() -> int:
 
         print(f"[puzzle {puzzle}] captcha rect: {rect}")
         # Capture full viewport (CDP scale!=1 ate the iframe content), crop in Pillow.
-        full_png = cdp_screenshot(cdp)
+        full_png = cdp.screenshot()
         cap_png = crop_png(full_png, rect["x"], rect["y"], rect["w"], rect["h"])
         cap_path = Path(args.save_shots) / f"puzzle-{puzzle}-cap.png"
         cap_path.write_bytes(cap_png)
@@ -403,14 +332,14 @@ def main() -> int:
             click_x = int(rect["x"] + grid_rect["x_off"] + (c + 0.5) * tile_w)
             click_y = int(rect["y"] + grid_rect["y_off"] + (r + 0.5) * tile_h)
             print(f"  click ({click_x},{click_y}) tile [{r},{c}]")
-            cdp_click(cdp, click_x, click_y)
+            cdp.click(click_x, click_y)
             time.sleep(0.4)
 
         if not matches:
             print(f"[puzzle {puzzle}] no matches found — clicking Skip if visible")
             # Skip button location: bottom-LEFT area of the verify strip
             skip = {"x": rect["x"] + 12, "y": rect["y"] + rect["h"] - 22}
-            cdp_click(cdp, skip["x"], skip["y"])
+            cdp.click(skip["x"], skip["y"])
             time.sleep(2)
             continue
 
@@ -421,7 +350,7 @@ def main() -> int:
             vx = verify["x"] + verify["w"] // 2
             vy = verify["y"] + verify["h"] // 2
             print(f"  verify click ({vx},{vy})")
-            cdp_click(cdp, vx, vy)
+            cdp.click(vx, vy)
         time.sleep(3.0)  # let new puzzle render or widget collapse
 
     print("[v2] hit max puzzle iterations without verifying done")

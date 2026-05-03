@@ -19,69 +19,27 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import base64
-import io
 import json
 import os
 import re
 import sys
 import time
 from pathlib import Path
-from typing import Optional, Tuple
-from urllib.request import urlopen
+from typing import Optional
 
-import websocket
 from google import genai
 from google.genai import types
+
+# Shared CDP / image / JSON helpers.
+from _cdp_lib import CDPClient, crop_png, list_pages, strip_json_fences
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     sys.exit("error: set GEMINI_API_KEY in your environment")
 DEFAULT_MODEL = "gemini-3.1-pro-preview"
-CDP_HTTP = os.environ.get("CDP_HTTP", "http://127.0.0.1:18800")
 
 
-class CDP:
-    def __init__(self, ws_url: str):
-        self.ws = websocket.create_connection(ws_url, timeout=30, origin="")
-        self._id = 0
-
-    def call(self, method: str, params: Optional[dict] = None, timeout: float = 30.0) -> dict:
-        self._id += 1
-        msg_id = self._id
-        self.ws.send(json.dumps({"id": msg_id, "method": method, "params": params or {}}))
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            try:
-                self.ws.settimeout(max(0.1, deadline - time.time()))
-                msg = json.loads(self.ws.recv())
-            except websocket.WebSocketTimeoutException:
-                continue
-            if msg.get("id") == msg_id:
-                if "error" in msg:
-                    raise RuntimeError(f"CDP {method}: {msg['error']}")
-                return msg.get("result", {})
-        raise TimeoutError(method)
-
-    def screenshot(self) -> bytes:
-        r = self.call("Page.captureScreenshot", {"format": "png", "captureBeyondViewport": False})
-        return base64.b64decode(r["data"])
-
-    def click(self, x: int, y: int):
-        self.call("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": x, "y": y})
-        time.sleep(0.06)
-        self.call("Input.dispatchMouseEvent", {"type": "mousePressed", "x": x, "y": y, "button": "left", "clickCount": 1})
-        time.sleep(0.05)
-        self.call("Input.dispatchMouseEvent", {"type": "mouseReleased", "x": x, "y": y, "button": "left", "clickCount": 1})
-
-    def close(self):
-        try:
-            self.ws.close()
-        except Exception:
-            pass
-
-
-def find_octocaptcha_rect(cdp: CDP) -> Optional[dict]:
+def find_octocaptcha_rect(cdp: CDPClient) -> Optional[dict]:
     """Return viewport rect {x,y,w,h} of the visible octocaptcha iframe."""
     js = """(() => {
       const ifs = [...document.querySelectorAll('iframe')]
@@ -92,15 +50,6 @@ def find_octocaptcha_rect(cdp: CDP) -> Optional[dict]:
     })()"""
     res = cdp.call("Runtime.evaluate", {"expression": js, "returnByValue": True})
     return res.get("result", {}).get("value")
-
-
-def crop(png: bytes, x: int, y: int, w: int, h: int) -> bytes:
-    from PIL import Image
-    im = Image.open(io.BytesIO(png))
-    box = (max(0, x), max(0, y), min(im.width, x + w), min(im.height, y + h))
-    out = io.BytesIO()
-    im.crop(box).save(out, format="PNG")
-    return out.getvalue()
 
 
 def ask_match(client: genai.Client, model: str, cap_png: bytes) -> dict:
@@ -134,8 +83,7 @@ def ask_match(client: genai.Client, model: str, cap_png: bytes) -> dict:
     )
     text = (resp.text or "").strip()
     print(f"    [match] raw ({len(text)} chars): {text[:300]}")
-    text = re.sub(r"```(?:json)?\s*", "", text)
-    text = re.sub(r"```", "", text)
+    text = strip_json_fences(text)
     m = re.search(r"\{[^{}]*\}", text, re.DOTALL)
     if not m:
         # Fallback: regex out fields
@@ -157,7 +105,7 @@ def ask_match(client: genai.Client, model: str, cap_png: bytes) -> dict:
         return {"action": "right", "score": 0, "raw": text[:200]}
 
 
-def find_buttons(cdp: CDP, frame_rect: dict) -> dict:
+def find_buttons(cdp: CDPClient, frame_rect: dict) -> dict:
     """Return click coords (in viewport) for left arrow, right arrow, submit, restart."""
     fx, fy, fw, fh = frame_rect["x"], frame_rect["y"], frame_rect["w"], frame_rect["h"]
     # Calibrated against octocaptcha 452x488 crop:
@@ -181,14 +129,13 @@ def main() -> int:
     ap.add_argument("--save-shots", default="/tmp/arkose")
     args = ap.parse_args()
 
-    pages = [t for t in json.loads(urlopen(f"{CDP_HTTP}/json", timeout=5).read())
-             if t.get("type") == "page"]
+    pages = list_pages()
     page = next((p for p in pages if p["id"] == args.target), pages[0] if pages else None)
     if not page:
         print("no page")
         return 2
 
-    cdp = CDP(page["webSocketDebuggerUrl"])
+    cdp = CDPClient(page["webSocketDebuggerUrl"])
     cdp.call("Page.enable")
     cdp.call("Runtime.enable")
     Path(args.save_shots).mkdir(parents=True, exist_ok=True)
@@ -213,7 +160,7 @@ def main() -> int:
         # Wait between clicks for animation
         time.sleep(0.8)
         full = cdp.screenshot()
-        cap = crop(full, rect["x"], rect["y"], rect["w"], rect["h"])
+        cap = crop_png(full, rect["x"], rect["y"], rect["w"], rect["h"])
         (Path(args.save_shots) / f"step-{click_n:02d}.png").write_bytes(cap)
 
         decision = ask_match(client, args.model, cap)

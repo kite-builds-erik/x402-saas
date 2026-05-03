@@ -1,6 +1,22 @@
 import Database from "better-sqlite3";
 import { ulid } from "ulid";
 
+const USDC_DECIMALS = 6;
+const USDC_SCALE = 1_000_000n;
+
+/** "0.05" → 50000 (USDC atomic units). Returns null if the input is malformed. */
+function usdToAtomic(usd: string): number | null {
+  if (!/^\d+(\.\d{1,6})?$/.test(usd)) return null;
+  const [whole, frac = ""] = usd.split(".");
+  const padded = (frac + "0".repeat(USDC_DECIMALS)).slice(0, USDC_DECIMALS);
+  return Number(BigInt(whole) * USDC_SCALE + BigInt(padded));
+}
+
+/** 50000n → "0.050000". Always returns 6-decimal precision. */
+function atomicToUsdString(atomic: bigint): string {
+  return `${atomic / USDC_SCALE}.${(atomic % USDC_SCALE).toString().padStart(USDC_DECIMALS, "0")}`;
+}
+
 export interface Tenant {
   id: string;
   walletAddress: string;
@@ -71,22 +87,29 @@ export class SaasDb {
       );
 
       CREATE TABLE IF NOT EXISTS events (
-        id           TEXT PRIMARY KEY,
-        tenant_id    TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-        route_id     TEXT REFERENCES routes(id),
-        payer        TEXT,
-        status       TEXT NOT NULL,
-        amount_usd   TEXT,
-        tx_hash      TEXT,
-        facilitator  TEXT,
-        latency_ms   INTEGER,
-        reason       TEXT,
-        created_at   INTEGER NOT NULL
+        id            TEXT PRIMARY KEY,
+        tenant_id     TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        route_id      TEXT REFERENCES routes(id),
+        payer         TEXT,
+        status        TEXT NOT NULL,
+        amount_usd    TEXT,
+        amount_atomic INTEGER,            -- USDC atomic units; lets SUM run in SQL
+        tx_hash       TEXT,
+        facilitator   TEXT,
+        latency_ms    INTEGER,
+        reason        TEXT,
+        created_at    INTEGER NOT NULL
       );
 
       CREATE INDEX IF NOT EXISTS idx_events_tenant_time ON events(tenant_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_events_route ON events(tenant_id, route_id, created_at DESC);
     `);
+    // Backfill amount_atomic for older rows that pre-date the column.
+    try {
+      this.db.exec(`ALTER TABLE events ADD COLUMN amount_atomic INTEGER`);
+    } catch {
+      // column already exists
+    }
   }
 
   createTenant(args: {
@@ -196,10 +219,11 @@ export class SaasDb {
   recordEvent(e: Omit<EventRecord, "id" | "createdAt">): EventRecord {
     const id = ulid();
     const createdAt = Date.now();
+    const amountAtomic = e.amountUsd ? usdToAtomic(e.amountUsd) : null;
     this.db
       .prepare(
-        `INSERT INTO events (id, tenant_id, route_id, payer, status, amount_usd, tx_hash, facilitator, latency_ms, reason, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO events (id, tenant_id, route_id, payer, status, amount_usd, amount_atomic, tx_hash, facilitator, latency_ms, reason, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         id,
@@ -208,6 +232,7 @@ export class SaasDb {
         e.payer,
         e.status,
         e.amountUsd,
+        amountAtomic,
         e.txHash,
         e.facilitator,
         e.latencyMs,
@@ -233,13 +258,18 @@ export class SaasDb {
     totalRevenueUsd: string;
     uniquePayers: number;
   } {
+    // Single SQL round-trip — counts and revenue sum together. The
+    // COALESCE(SUM(...)) for legacy rows missing amount_atomic falls back to
+    // re-parsing amount_usd (rare; only for events written before the column).
     const totals = this.db
       .prepare(
         `SELECT
            COUNT(*) AS total,
            COUNT(CASE WHEN status='paid' THEN 1 END) AS paid,
            COUNT(CASE WHEN status='rejected' THEN 1 END) AS rejected,
-           COUNT(DISTINCT CASE WHEN status='paid' THEN payer END) AS unique_payers
+           COUNT(DISTINCT CASE WHEN status='paid' THEN payer END) AS unique_payers,
+           COALESCE(SUM(CASE WHEN status='paid' THEN amount_atomic END), 0) AS revenue_atomic,
+           COUNT(CASE WHEN status='paid' AND amount_atomic IS NULL AND amount_usd IS NOT NULL THEN 1 END) AS legacy_count
          FROM events WHERE tenant_id = ?`,
       )
       .get(tenantId) as {
@@ -247,31 +277,29 @@ export class SaasDb {
       paid: number;
       rejected: number;
       unique_payers: number;
+      revenue_atomic: number;
+      legacy_count: number;
     };
 
-    const paidEvents = this.db
-      .prepare(`SELECT amount_usd FROM events WHERE tenant_id = ? AND status='paid'`)
-      .all(tenantId) as { amount_usd: string | null }[];
-    let revenueAtomic = 0n;
-    for (const r of paidEvents) {
-      if (!r.amount_usd) continue;
-      try {
-        const [whole, fracRaw = ""] = r.amount_usd.split(".");
-        const frac = (fracRaw + "000000").slice(0, 6);
-        revenueAtomic += BigInt(whole) * 1_000_000n + BigInt(frac);
-      } catch {
-        // skip malformed amounts
+    let revenueAtomic = BigInt(totals.revenue_atomic);
+    if (totals.legacy_count > 0) {
+      // Fallback path for rows from before amount_atomic existed.
+      const legacy = this.db
+        .prepare(
+          `SELECT amount_usd FROM events
+           WHERE tenant_id = ? AND status='paid' AND amount_atomic IS NULL AND amount_usd IS NOT NULL`,
+        )
+        .all(tenantId) as { amount_usd: string }[];
+      for (const r of legacy) {
+        revenueAtomic += BigInt(usdToAtomic(r.amount_usd) ?? 0);
       }
     }
-    const usd = `${revenueAtomic / 1_000_000n}.${(revenueAtomic % 1_000_000n)
-      .toString()
-      .padStart(6, "0")}`;
 
     return {
       totalRequests: totals.total,
       paidRequests: totals.paid,
       rejectedRequests: totals.rejected,
-      totalRevenueUsd: usd,
+      totalRevenueUsd: atomicToUsdString(revenueAtomic),
       uniquePayers: totals.unique_payers,
     };
   }

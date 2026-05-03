@@ -99,18 +99,34 @@ async function handleProxiedRequest(args: ProxiedRequestArgs): Promise<void> {
   const { tenant, req, res, db, facilitator, fetchImpl } = args;
   const start = Date.now();
   const route = db.routeForRequest(tenant.id, req.method, req.path);
-  if (!route) {
+
+  // Closure: every event from this request shares tenant/route/latency.
+  // Each call site only specifies what differs (status, payer, amount, etc).
+  type EventDelta = {
+    status: "paid" | "rejected" | "free" | "error";
+    payer?: string | null;
+    amountUsd?: string | null;
+    txHash?: string | null;
+    facilitator?: string | null;
+    reason?: string | null;
+  };
+  const facilitatorLabel = facilitator === STUB_FACILITATOR ? "stub" : "http";
+  const log = (e: EventDelta): void => {
     db.recordEvent({
       tenantId: tenant.id,
-      routeId: null,
-      payer: null,
-      status: "error",
-      amountUsd: null,
-      txHash: null,
-      facilitator: null,
+      routeId: route?.id ?? null,
+      payer: e.payer ?? null,
+      status: e.status,
+      amountUsd: e.amountUsd ?? null,
+      txHash: e.txHash ?? null,
+      facilitator: e.facilitator === undefined ? null : e.facilitator,
       latencyMs: Date.now() - start,
-      reason: "route_not_found",
+      reason: e.reason ?? null,
     });
+  };
+
+  if (!route) {
+    log({ status: "error", reason: "route_not_found" });
     res.status(404).json({ error: "route_not_configured", method: req.method, path: req.path });
     return;
   }
@@ -136,17 +152,7 @@ async function handleProxiedRequest(args: ProxiedRequestArgs): Promise<void> {
           },
         ],
       });
-    db.recordEvent({
-      tenantId: tenant.id,
-      routeId: route.id,
-      payer: null,
-      status: "rejected",
-      amountUsd: null,
-      txHash: null,
-      facilitator: null,
-      latencyMs: Date.now() - start,
-      reason: "missing_x_payment",
-    });
+    log({ status: "rejected", reason: "missing_x_payment" });
     return;
   }
 
@@ -158,17 +164,7 @@ async function handleProxiedRequest(args: ProxiedRequestArgs): Promise<void> {
   });
   if (!verify.ok) {
     res.status(402).json({ error: "payment_invalid", reason: verify.reason });
-    db.recordEvent({
-      tenantId: tenant.id,
-      routeId: route.id,
-      payer: null,
-      status: "rejected",
-      amountUsd: null,
-      txHash: null,
-      facilitator: null,
-      latencyMs: Date.now() - start,
-      reason: verify.reason,
-    });
+    log({ status: "rejected", reason: verify.reason });
     return;
   }
 
@@ -189,15 +185,12 @@ async function handleProxiedRequest(args: ProxiedRequestArgs): Promise<void> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(502).json({ error: "upstream_unreachable", message: msg });
-    db.recordEvent({
-      tenantId: tenant.id,
-      routeId: route.id,
-      payer: verify.payer,
+    log({
       status: "error",
+      payer: verify.payer,
       amountUsd: route.priceUsd,
       txHash: verify.txHash,
-      facilitator: facilitatorName(facilitator),
-      latencyMs: Date.now() - start,
+      facilitator: facilitatorLabel,
       reason: msg,
     });
     return;
@@ -231,22 +224,14 @@ async function handleProxiedRequest(args: ProxiedRequestArgs): Promise<void> {
     }
   }
 
-  db.recordEvent({
-    tenantId: tenant.id,
-    routeId: route.id,
-    payer: verify.payer,
+  log({
     status: settleStatus,
+    payer: verify.payer,
     amountUsd: route.priceUsd,
     txHash,
-    facilitator: facilitatorName(facilitator),
-    latencyMs: Date.now() - start,
+    facilitator: facilitatorLabel,
     reason: settleReason,
   });
-}
-
-function facilitatorName(f: FacilitatorClient): string {
-  if (f === STUB_FACILITATOR) return "stub";
-  return "http";
 }
 
 function forwardableHeaders(req: Request): Record<string, string> {

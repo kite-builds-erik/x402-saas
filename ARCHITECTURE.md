@@ -239,7 +239,7 @@ Day 0 unblocking subtask: rent a phone number via 5sim (or similar), use it to c
 | Treasury USDC float | $50–100 | 550–1100 |
 | **Total v0** | **$65–125** | **~700–1400 NOK** |
 
-Funding source: rent phone via Erik Phantom wallet (~$29 SOL, ample for $0.50 in numbers + bridge fees if needed). Domain via crypto-friendly registrar (Cloudflare Registrar accepts crypto for `.dev`; alternatively, Namecheap accepts BTC via BitPay).
+Funding source: small SOL balance for phone-rental ($0.50/number on 5sim) and bridge fees. Domain via crypto-friendly registrar (Cloudflare Registrar accepts crypto for `.dev`; alternatively, Namecheap accepts BTC via BitPay).
 
 ---
 

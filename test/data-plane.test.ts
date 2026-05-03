@@ -8,6 +8,7 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { SaasDb } from "../dist/db.js";
 import { dataPlaneRouter, parseSlugFromHost } from "../dist/data-plane.js";
+import type { FacilitatorClient } from "../dist/facilitator.js";
 
 interface RunningPlane {
   url: string;
@@ -17,7 +18,12 @@ interface RunningPlane {
   close(): Promise<void>;
 }
 
-async function startPlane(): Promise<RunningPlane> {
+interface StartPlaneOptions {
+  facilitator?: FacilitatorClient;
+  fetchImpl?: typeof fetch;
+}
+
+async function startPlane(opts: StartPlaneOptions = {}): Promise<RunningPlane> {
   const dir = mkdtempSync(join(tmpdir(), "x402-saas-dp-"));
   const db = new SaasDb(join(dir, "test.db"));
 
@@ -27,7 +33,7 @@ async function startPlane(): Promise<RunningPlane> {
     body: JSON.stringify({ ok: true, value: "pong" }),
     contentType: "application/json",
   };
-  const fakeFetch: typeof fetch = (async (input: unknown, init?: RequestInit) => {
+  const defaultFakeFetch: typeof fetch = (async (input: unknown, init?: RequestInit) => {
     const url =
       typeof input === "string" ? input : input instanceof URL ? input.toString() : (input as Request).url;
     upstreamHits.push({
@@ -47,8 +53,9 @@ async function startPlane(): Promise<RunningPlane> {
       db,
       domain: "kite.test",
       enforceHostMatch: false,
-      fetchImpl: fakeFetch,
+      fetchImpl: opts.fetchImpl ?? defaultFakeFetch,
       feeWallet: "0xfee0000000000000000000000000000000000000",
+      facilitator: opts.facilitator,
     }),
   );
   const server = await new Promise<Server>((resolve) => {
@@ -192,6 +199,142 @@ test("paused tenant is rejected with 503", async () => {
     assert.equal(res.status, 503);
   } finally {
     await p.close();
+  }
+});
+
+test("upstream-unreachable returns 502 + records error event with paid amount", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "x402-saas-dp-"));
+  const db = new SaasDb(join(dir, "test.db"));
+  const erroringFetch: typeof fetch = (async () => {
+    throw new Error("ECONNREFUSED upstream");
+  }) as typeof fetch;
+  const app = express();
+  app.use(
+    dataPlaneRouter({
+      db,
+      domain: "kite.test",
+      enforceHostMatch: false,
+      fetchImpl: erroringFetch,
+      feeWallet: "0xfee0000000000000000000000000000000000000",
+    }),
+  );
+  const server = await new Promise<Server>((resolve) => {
+    const s = app.listen(0, () => resolve(s));
+  });
+  const port = (server.address() as AddressInfo).port;
+  try {
+    const t = db.createTenant({
+      walletAddress: "0x5555555555555555555555555555555555555555",
+      slug: "upfail",
+      network: "base-sepolia",
+    });
+    db.addRoute({
+      tenantId: t.id,
+      method: "GET",
+      path: "/x",
+      priceUsd: "0.05",
+      backendUrl: "https://upstream.example",
+    });
+    const res = await fetch(`http://127.0.0.1:${port}/x`, {
+      headers: { "x-slug-override": "upfail", "x-payment": "stub:0xpaid" },
+    });
+    assert.equal(res.status, 502);
+    const body = (await res.json()) as { error: string; message: string };
+    assert.equal(body.error, "upstream_unreachable");
+    assert.match(body.message, /ECONNREFUSED/);
+
+    const events = db.recentEvents(t.id, 10);
+    assert.equal(events.length, 1);
+    assert.equal(events[0].status, "error");
+    assert.equal(events[0].payer, "0xpaid"); // payer survives so we can refund
+    assert.equal(events[0].amountUsd, "0.05"); // amount recorded for reconciliation
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((err) => (err ? reject(err) : resolve())),
+    );
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("settle-failure path records 'rejected' even after upstream returned 200 (silent revenue-loss prevention)", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "x402-saas-dp-"));
+  const db = new SaasDb(join(dir, "test.db"));
+
+  // Facilitator that ACCEPTS verify but FAILS on settle. The customer sees
+  // upstream's 200 response, but we must record the event as rejected so the
+  // tenant can chase the bad settlement (rather than thinking they got paid).
+  const failingSettleFacilitator = {
+    async verify({ paymentHeader }: { paymentHeader: string }) {
+      return paymentHeader.startsWith("stub:")
+        ? {
+            ok: true as const,
+            payer: paymentHeader.slice(5),
+            txHash: null,
+            payload: { x402Version: 1 } as never,
+            requirements: { scheme: "exact" } as never,
+          }
+        : { ok: false as const, reason: "no stub" };
+    },
+    async settle() {
+      return { success: false, errorReason: "facilitator rejected at settlement" };
+    },
+  };
+
+  const fakeFetch: typeof fetch = (async () => new Response('{"ok":true}', {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  })) as typeof fetch;
+
+  const app = express();
+  app.use(
+    dataPlaneRouter({
+      db,
+      domain: "kite.test",
+      enforceHostMatch: false,
+      fetchImpl: fakeFetch,
+      feeWallet: "0xfee0000000000000000000000000000000000000",
+      facilitator: failingSettleFacilitator,
+    }),
+  );
+  const server = await new Promise<Server>((resolve) => {
+    const s = app.listen(0, () => resolve(s));
+  });
+  const port = (server.address() as AddressInfo).port;
+  try {
+    const t = db.createTenant({
+      walletAddress: "0x6666666666666666666666666666666666666666",
+      slug: "settlefail",
+      network: "base-sepolia",
+    });
+    db.addRoute({
+      tenantId: t.id,
+      method: "GET",
+      path: "/y",
+      priceUsd: "0.10",
+      backendUrl: "https://upstream.example",
+    });
+    const res = await fetch(`http://127.0.0.1:${port}/y`, {
+      headers: { "x-slug-override": "settlefail", "x-payment": "stub:0xpaidbutsettlefail" },
+    });
+    // Customer DID get the upstream response (we already streamed it back)
+    assert.equal(res.status, 200);
+
+    // Settle ran async after res.send; give it a tick to land
+    await new Promise((r) => setTimeout(r, 50));
+
+    const events = db.recentEvents(t.id, 10);
+    assert.equal(events.length, 1);
+    assert.equal(events[0].status, "rejected");
+    assert.equal(events[0].payer, "0xpaidbutsettlefail");
+    assert.equal(events[0].amountUsd, "0.10");
+    assert.match(events[0].reason ?? "", /settlement|settle failed|facilitator rejected/i);
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((err) => (err ? reject(err) : resolve())),
+    );
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
   }
 });
 

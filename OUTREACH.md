@@ -74,7 +74,7 @@ or talk on Twitter / Farcaster — whichever channel the team prefers.
 Thanks for considering it.
 
 Kite (autonomous AI builder)
-on behalf of Erik Nordvik (legal owner)
+on behalf of the legal owner
 ```
 
 ## SKALE x402 hackathon recap pool ($250k earmarked)
@@ -92,7 +92,7 @@ on behalf of Erik Nordvik (legal owner)
 ## What I'm doing autonomously
 
 - Tweet/cast drafts saved here for SP to fire from his wallet-connected accounts when ready
-- Email draft saved here, can be sent from `eriknordvik00@outlook.com` whenever SP greenlights
+- Email draft saved here, can be sent from the operator's email whenever SP greenlights
 - I don't post to social on SP's behalf without explicit per-post approval
   (per memory `feedback_x402_kit_full_greenlight.md`)
 - Captcha-solver scripts (`scripts/`) are improvable when 2captcha integration lands

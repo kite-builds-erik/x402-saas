@@ -195,6 +195,49 @@ test("POST /tenants rejects bad route input", async () => {
   }
 });
 
+test("POST /tenants rejects expired challenge", async () => {
+  const cp = await startCp();
+  try {
+    const acct = privateKeyToAccount(generatePrivateKey());
+
+    const challengeRes = await fetch(`${cp.url}/api/v1/auth/challenge`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ walletAddress: acct.address }),
+    });
+    const { challenge, message } = (await challengeRes.json()) as {
+      challenge: { expiresAt: number };
+      message: string;
+    };
+    // Backdate the challenge so server-side validation rejects it.
+    challenge.expiresAt = Date.now() - 1000;
+    const signature = await acct.signMessage({ message });
+
+    const createRes = await fetch(`${cp.url}/api/v1/tenants`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        challenge,
+        signature,
+        network: "base-sepolia",
+        routes: [
+          {
+            method: "GET",
+            path: "/x",
+            priceUsd: "0.01",
+            backendUrl: "https://api.example.com",
+          },
+        ],
+      }),
+    });
+    assert.equal(createRes.status, 401);
+    const body = (await createRes.json()) as { error: string; reason: string };
+    assert.match(body.reason, /expired/i);
+  } finally {
+    await cp.close();
+  }
+});
+
 test("creating a second tenant with same wallet returns 409", async () => {
   const cp = await startCp();
   try {
