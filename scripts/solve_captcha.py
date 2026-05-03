@@ -2,7 +2,7 @@
 """
 solve_captcha.py — autonomous captcha solver using Gemini Vision + mac_control.
 
-Lifts the click + screenshot primitives from /Users/botbot/mac-control/mac_control.py
+Lifts the click + screenshot primitives from ~/mac-control/mac_control.py
 and pairs them with Gemini Vision (free tier API). Loops until Gemini reports the
 challenge is done.
 
@@ -29,7 +29,7 @@ import time
 from pathlib import Path
 
 # Make mac_control importable
-sys.path.insert(0, "/Users/botbot/mac-control")
+sys.path.insert(0, os.path.expanduser("~/mac-control"))
 import mac_control  # type: ignore
 
 # Use the new google-genai SDK

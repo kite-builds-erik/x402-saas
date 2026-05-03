@@ -1,7 +1,7 @@
 # Captcha-solver scripts
 
-Two-pronged autonomous captcha solver, lifted from `/Users/botbot/mac-control/`
-(the airline-booking bot SP built earlier). Both use Gemini 2.5 Flash Vision
+Two-pronged autonomous captcha solver, lifted from `~/mac-control/`
+(an earlier macOS automation experiment). Both use Gemini 2.5 Flash Vision
 on the free tier.
 
 ## `solve_captcha.py` — pyautogui path
@@ -32,14 +32,14 @@ more reliable than pyautogui — but requires Chrome to be launched with
 errors with `403 Forbidden` on the WS handshake. Two ways to fix:
 
 1. **Edit OpenClaw config** to pass extra Chrome flags. Look for `browser`
-   plugin config in `/Users/botbot/.openclaw/openclaw.json` and add
+   plugin config in `~/.openclaw/openclaw.json` and add
    `chromiumArgs: ["--remote-allow-origins=*"]` (exact key TBD by inspecting
    the OpenClaw plugin schema).
 2. **Restart OpenClaw browser manually** with the flag:
    ```bash
    pkill -f "openclaw/browser/openclaw/user-data"
    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
-     --user-data-dir=/Users/botbot/.openclaw/browser/openclaw/user-data \
+     --user-data-dir=~/.openclaw/browser/openclaw/user-data \
      --remote-debugging-port=18800 \
      --remote-allow-origins='*' &
    ```

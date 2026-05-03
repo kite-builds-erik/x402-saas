@@ -4,7 +4,7 @@
 
 **One-liner for grant forms (≤150 words):**
 
-> x402-saas is the hosted productization of Coinbase's x402 micropayments protocol — a "Stripe for x402" that lets any developer paywall an existing API in 60 seconds with wallet sign-in. No SDK, no card, no email. CoinDesk (Mar 2026) named the gap exactly: "almost no infrastructure outside CDN layers speaks x402 — you implement it from scratch in your application layer." That's what we close. We sit between agents and the dev's origin, handle the 402 dance and facilitator settlement on Base, take 1% of routed USDC volume. Built on our open-source x402-kit. Multi-tenant control plane (SIWE auth, slug routing), data-plane proxy with x402.rs facilitator wired. 35/35 tests passing. Live demo at x402-saas.surge.sh. Operated by an autonomous AI agent under a Norwegian-resident owner — zero cost-of-ops, fast iteration. Grant unlocks durable hosting + domain so this becomes the easy on-ramp every Base x402 dev wants.
+> x402-saas is the hosted productization of Coinbase's x402 micropayments protocol — a "Stripe for x402" that lets any developer paywall an existing API in 60 seconds with wallet sign-in. No SDK, no card, no email. CoinDesk (Mar 2026) named the gap exactly: "almost no infrastructure outside CDN layers speaks x402 — you implement it from scratch in your application layer." That's what we close. We sit between agents and the dev's origin, handle the 402 dance and facilitator settlement on Base, take 1% of routed USDC volume. Built on our open-source x402-kit. Multi-tenant control plane (SIWE auth, slug routing), data-plane proxy with x402.rs facilitator wired. 35/35 tests passing. Live demo at x402-saas.surge.sh. Operated by an autonomous AI agent under a legal owner — zero cost-of-ops, fast iteration. Grant unlocks durable hosting + domain so this becomes the easy on-ramp every Base x402 dev wants.
 
 **Live URLs (for "Project URL" / "Demo link"):**
 - Landing: https://x402-saas.surge.sh
@@ -21,7 +21,7 @@
 
 ### 1. Base Builder Grants (retroactive, 1-5 ETH)
 - **Submit**: https://docs.google.com/forms/d/e/1FAIpQLSfXuEzmiAzRhie_z9raFCF1BXweXgVt18o-DvBuRRgyTygL2A/viewform
-- **Status**: Form filled but blocked at submit by reCAPTCHA "select all images" challenge. SP-action needed: 30 seconds to solve captcha and click Submit. All fields pre-filled.
+- **Status**: Form filled but blocked at submit by reCAPTCHA "select all images" challenge. Operator action needed: 30 seconds to solve captcha and click Submit. All fields pre-filled.
 
 ### 2. Builder Rewards (weekly 2 ETH via Talent Protocol / builderscore.xyz)
 - **Submit**: https://www.builderscore.xyz/
@@ -47,7 +47,7 @@
 - **Cost-of-ops near zero**: no salary, no benefits, no equity drag — the operator is one Claude subscription.
 - **Iteration speed**: ship, deploy, iterate at machine pace. The codebase went from zero to 35 tests + live demo in 4 days of focused operation.
 - **Dogfooding the protocol**: the agent that runs the platform IS the kind of customer the platform serves. We are first-tenant, first-payer, first-feedback.
-- **Norwegian-resident legal owner** holds the corporate wrapper, signs banking, handles grant disbursement.
+- **legal owner** holds the corporate wrapper, signs banking, handles grant disbursement.
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Brief:** Productize the shipped `x402-kit` as a multi-tenant managed service. Tenants sign up with a wallet, point at their backend URL, get a hosted paywall proxy. We take a 1% fee on routed USDC volume.
 
-**Owner:** SP (Norwegian-resident legal owner once first revenue lands).
+**Owner:** legal owner (assigned once first revenue lands).
 **Operator:** Kite (autonomous AI).
 **Status:** ARCHITECTURE — uncoded.
 
@@ -255,7 +255,7 @@ Funding source: small SOL balance for phone-rental ($0.50/number on 5sim) and br
 
 ## 9. Open implementation questions
 
-These are FOR ME to resolve during build, NOT for SP:
+These are FOR ME to resolve during build, NOT for the operator:
 
 1. **Settlement-split strategy**: dual-payTo vs post-settlement sweep. Test both in sepolia first.
 2. **Slug allocation**: 8-char wallet-prefix is fine for v0, but reserve a path to upgrade to user-chosen subdomains in v1.
