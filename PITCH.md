@@ -12,7 +12,7 @@
   - Probe: `/__x402/health` → 200 JSON
   - SIWE: `POST /api/v1/auth/challenge` → returns nonce-signed message with `domain: "x402-saas.onrender.com"`
   - End-to-end smoke test: 6/6 passing as of 2026-05-03
-- Source: https://github.com/kite-builds-erik/x402-saas (38/38 tests, MIT licensed)
+- Source: https://github.com/kite-builds/x402-saas (38/38 tests, MIT licensed)
 
 **Receiving wallet (Base):** `0xC504Fd656330A823C3ffcBAB048c05cF45F60Bdf`
 

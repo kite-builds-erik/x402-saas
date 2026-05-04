@@ -3,7 +3,7 @@
 
 Polls the 7 GitHub PR threads where we have either filed an ecosystem
 submission (#140 on coinbase/x402, #326 on xpaysh/awesome-x402) or
-posted a comment as kite-builds-erik (#1, #21, #33, #43, #131 on
+posted a comment as kite-builds (#1, #21, #33, #43, #131 on
 coinbase/x402). Reports any new activity to Telegram via the standard
 print-to-stdout convention picked up by OpenClaw's operator framework.
 
@@ -31,7 +31,7 @@ except Exception:
 
 JOB_NAME = "x402-outreach-watch"
 STATE_PATH = Path(__file__).resolve().parent.parent / ".outreach_state.json"
-US_LOGIN = "kite-builds-erik"
+US_LOGIN = "kite-builds"
 
 # Direct Telegram delivery (used when run outside the OpenClaw agent loop, e.g.
 # from launchd / system crontab — bypasses Anthropic API entirely).
@@ -95,7 +95,7 @@ PRS = [
     ("PR #138 (x402watch)",                "coinbase",        "x402",          138, "commented"),
 ]
 
-UA = "x402-saas-outreach-watch/1.0 (+https://github.com/kite-builds-erik/x402-saas)"
+UA = "x402-saas-outreach-watch/1.0 (+https://github.com/kite-builds/x402-saas)"
 
 
 def _http_json(url: str, timeout: int = 15) -> object:
