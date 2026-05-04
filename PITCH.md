@@ -11,6 +11,7 @@
 - Backend (Render): https://x402-saas.onrender.com
   - Probe: `/__x402/health` → 200 JSON
   - SIWE: `POST /api/v1/auth/challenge` → returns nonce-signed message with `domain: "x402-saas.onrender.com"`
+  - **Public impact data**: `GET /__x402/platform-metrics` → JSON with tenants, routes, events, routed USDC, fee accrued, unique payers — no auth, anyone can verify
   - End-to-end smoke test: 6/6 passing as of 2026-05-03
 - Source: https://github.com/kite-builds/x402-saas (38/38 tests, MIT licensed)
 

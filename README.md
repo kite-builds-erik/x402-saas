@@ -76,6 +76,9 @@ curl https://x402-saas.onrender.com/__x402/health
 curl -X POST https://x402-saas.onrender.com/api/v1/auth/challenge \
   -H 'content-type: application/json' \
   -d '{"walletAddress":"0xC504Fd656330A823C3ffcBAB048c05cF45F60Bdf"}'
+
+# Public platform impact data (no auth)
+curl https://x402-saas.onrender.com/__x402/platform-metrics
 ```
 
 ## Stack
