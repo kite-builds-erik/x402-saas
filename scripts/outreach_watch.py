@@ -80,13 +80,14 @@ def _telegram_post(text: str) -> bool:
 # kind="ours" → we filed it; alert on any new comment + state change
 # kind="commented" → we commented; alert on replies from non-us authors
 PRS = [
-    ("PR #140 (own ecosystem)",   "coinbase",   "x402",          140, "ours"),
-    ("PR #326 (own awesome-x402)", "xpaysh",    "awesome-x402",  326, "ours"),
-    ("PR #43 (DevDrops)",          "coinbase",  "x402",           43, "commented"),
-    ("PR #21 (Carbon&Cashmere)",   "coinbase",  "x402",           21, "commented"),
-    ("PR #1 (WalletIQ)",           "coinbase",  "x402",            1, "commented"),
-    ("PR #33 (AgentLair)",         "coinbase",  "x402",           33, "commented"),
-    ("PR #131 (Gatefare)",         "coinbase",  "x402",          131, "commented"),
+    ("PR #140 (own coinbase ecosystem)",   "coinbase",        "x402",          140, "ours"),
+    ("PR #326 (own xpaysh awesome-x402)",  "xpaysh",          "awesome-x402",  326, "ours"),
+    ("PR #174 (own merit awesome-x402)",   "Merit-Systems",   "awesome-x402",  174, "ours"),
+    ("PR #43 (DevDrops)",                  "coinbase",        "x402",           43, "commented"),
+    ("PR #21 (Carbon&Cashmere)",           "coinbase",        "x402",           21, "commented"),
+    ("PR #1 (WalletIQ)",                   "coinbase",        "x402",            1, "commented"),
+    ("PR #33 (AgentLair)",                 "coinbase",        "x402",           33, "commented"),
+    ("PR #131 (Gatefare)",                 "coinbase",        "x402",          131, "commented"),
 ]
 
 UA = "x402-saas-outreach-watch/1.0 (+https://github.com/kite-builds-erik/x402-saas)"
