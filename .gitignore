@@ -8,3 +8,4 @@ dist/
 coverage/
 *.log
 .outreach_state.json
+.outlook_state.json
