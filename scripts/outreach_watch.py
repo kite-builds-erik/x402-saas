@@ -88,6 +88,11 @@ PRS = [
     ("PR #1 (WalletIQ)",                   "coinbase",        "x402",            1, "commented"),
     ("PR #33 (AgentLair)",                 "coinbase",        "x402",           33, "commented"),
     ("PR #131 (Gatefare)",                 "coinbase",        "x402",          131, "commented"),
+    ("PR #60 (AgentLux)",                  "coinbase",        "x402",           60, "commented"),
+    ("PR #118 (CRYPTYX)",                  "coinbase",        "x402",          118, "commented"),
+    ("PR #24 (SignalFuse)",                "coinbase",        "x402",           24, "commented"),
+    ("PR #25 (AAAA-Nexus)",                "coinbase",        "x402",           25, "commented"),
+    ("PR #138 (x402watch)",                "coinbase",        "x402",          138, "commented"),
 ]
 
 UA = "x402-saas-outreach-watch/1.0 (+https://github.com/kite-builds-erik/x402-saas)"
