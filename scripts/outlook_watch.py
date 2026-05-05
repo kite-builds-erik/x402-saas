@@ -95,13 +95,48 @@ def _format_item(item: dict) -> str:
     return f"{flag} {short}"
 
 
+def _ensure_outlook_tab():
+    """Return a CDP page for outlook.live.com/mail. If no tab matches, navigate
+    the first existing tab to outlook (cheaper than spawning a new tab over
+    HTTP). The browser keeps the session cookie regardless of which tab loads it."""
+    from _cdp_lib import list_pages
+    pages = list_pages()
+    for p in pages:
+        if "outlook.live.com/mail" in p.get("url", ""):
+            return p, False  # already on outlook
+    if not pages:
+        raise RuntimeError("no CDP pages available")
+    target = pages[0]
+    cli = CDPClient(target["webSocketDebuggerUrl"])
+    cli.call("Page.navigate", {"url": "https://outlook.live.com/mail/0/inbox"})
+    # Poll for completion (max ~25s)
+    import time as _t
+    for _ in range(50):
+        _t.sleep(0.5)
+        try:
+            state = cli.evaluate("document.readyState")
+            title = cli.evaluate("document.title") or ""
+            if state == "complete" and "moment" not in title.lower():
+                break
+        except Exception:
+            break
+    _t.sleep(2.0)
+    cli.close()
+    # Re-list to get the updated url for the page we just navigated
+    pages = list_pages()
+    for p in pages:
+        if "outlook.live.com" in p.get("url", ""):
+            return p, True  # we just navigated it
+    raise RuntimeError("outlook navigation did not stick")
+
+
 def main() -> int:
     debug = "--debug" in sys.argv
 
     try:
-        page = pick_page(url_substring="outlook.live.com/mail")
-    except SystemExit as exc:
-        print(f"NO_REPLY (outlook tab not open: {exc})")
+        page, _ = _ensure_outlook_tab()
+    except Exception as exc:
+        print(f"NO_REPLY (outlook tab unreachable: {exc})")
         return 0
 
     try:
