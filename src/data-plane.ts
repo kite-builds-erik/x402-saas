@@ -69,9 +69,21 @@ export function dataPlaneRouter(opts: DataPlaneOptions): Router {
               ua: String(req.headers["user-agent"] ?? "").slice(0, 200),
               ip: String(req.headers["x-forwarded-for"] ?? "").split(",")[0] || null,
             }) + "\n";
-            // Append to /tmp on Render (ephemeral); good enough for v0
-            // — in production we'd DB-back this.
             try { require("node:fs").appendFileSync("/tmp/waitlist.jsonl", line); } catch (_) {}
+
+            // Real-time Telegram ping so SP sees signups even if Render
+            // restarts and clears /tmp. Ignores test/agent emails.
+            const isTest = /example\.com|test|smoke|warm@|audit-check@/i.test(email);
+            const tg = process.env.TELEGRAM_BOT_TOKEN;
+            const chat = process.env.TELEGRAM_CHAT_ID || "6648541632";
+            if (!isTest && tg) {
+              const text = `🆕 Waitlist signup\n\nemail: ${email}\nsource: ${source}\nat: ${new Date().toISOString()}`;
+              fetch(`https://api.telegram.org/bot${tg}/sendMessage`, {
+                method: "POST",
+                headers: { "content-type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ chat_id: chat, text }).toString(),
+              }).catch(() => {});
+            }
           }
           // Permissive CORS for static landing pages.
           res.setHeader("Access-Control-Allow-Origin", "*");
