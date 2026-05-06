@@ -52,6 +52,42 @@ export function dataPlaneRouter(opts: DataPlaneOptions): Router {
         // Public, no auth — grant reviewers can verify impact-data themselves.
         return res.json(opts.db.platformMetrics());
       }
+      if (req.path === "/waitlist" && req.method === "POST") {
+        // Simple email-list capture for fake-door / pre-launch validation
+        // pages (crawler-shield-landing etc.). No auth — we accept any
+        // submission and triage server-side. Returns 200 even on dupes so
+        // the form UX stays consistent.
+        try {
+          const raw = req.body instanceof Buffer ? req.body.toString("utf-8") : "";
+          const data = raw ? JSON.parse(raw) : {};
+          const email = String(data.email ?? "").slice(0, 200);
+          const source = String(data.source ?? "unknown").slice(0, 80);
+          if (email && /@/.test(email)) {
+            const line = JSON.stringify({
+              ts: new Date().toISOString(),
+              email, source,
+              ua: String(req.headers["user-agent"] ?? "").slice(0, 200),
+              ip: String(req.headers["x-forwarded-for"] ?? "").split(",")[0] || null,
+            }) + "\n";
+            // Append to /tmp on Render (ephemeral); good enough for v0
+            // — in production we'd DB-back this.
+            try { require("node:fs").appendFileSync("/tmp/waitlist.jsonl", line); } catch (_) {}
+          }
+          // Permissive CORS for static landing pages.
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          return res.json({ ok: true });
+        } catch (e) {
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          return res.json({ ok: false });
+        }
+      }
+      if (req.path === "/waitlist" && req.method === "OPTIONS") {
+        // CORS preflight
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+        res.setHeader("Access-Control-Allow-Headers", "content-type");
+        return res.status(204).end();
+      }
       return res.status(404).json({ error: "no_tenant_in_host" });
     }
 
