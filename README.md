@@ -11,6 +11,21 @@
 
 This is the multi-tenant managed companion to [`x402-kit`](../x402-kit). The kit is the open-source toolkit you self-host. **`x402-saas` is the hosted version we run for you** — when you don't want to manage infra, configure DNS, or write 402 middleware, you point your backend at our proxy and we take care of the rest.
 
+## Demo
+
+![x402-saas proxy flow](https://x402-saas.surge.sh/demo.gif)
+
+One HTTP round-trip: agent calls a paid endpoint, gets back a 402 with
+price + payTo, signs an EIP-3009 transfer, retries with the `X-PAYMENT`
+header, receives the actual response. 99% of the USDC routes to the
+merchant, 1% to x402-saas treasury. No agent registration, no API key.
+
+Reproduce locally:
+
+```bash
+bash scripts/demo-walkthrough.sh
+```
+
 ## How it works
 
 ```
